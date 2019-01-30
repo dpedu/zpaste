@@ -3,7 +3,7 @@ import cherrypy
 import logging
 import hashlib
 import re
-
+from threading import Thread
 
 PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -34,6 +34,18 @@ def sha256(data):
 class WasteWeb(object):
     def __init__(self, datadir):
         self.datadir = datadir
+        self.namecache = set()
+        t = Thread(target=self.prep_cache)
+        t.daemon = True
+        t.start()
+
+    def prep_cache(self):
+        print("Populating index cache....")
+        for dirpath, dirnames, filenames in os.walk(self.datadir):
+            for fname in filenames:
+                with open(os.path.join(dirpath, fname)) as f:
+                    self.namecache.update([f.readline().strip()])
+        print("Indexed {} items".format(len(self.namecache)))
 
     @cherrypy.expose
     def index(self, load=None):
@@ -45,15 +57,24 @@ class WasteWeb(object):
 
     @cherrypy.expose
     def make(self, name, contents):
-        assert RE_NAME.match(name)
         pname = name or sha256(contents)
+        assert RE_NAME.match(pname)
         self.writepaste(pname, contents)
         raise cherrypy.HTTPRedirect("/" + pname)
 
     @cherrypy.expose
     def default(self, *args):
-        data = self.loadpaste(args[0])
-        yield data
+        if cherrypy.request.method == "DELETE":
+            self.delpaste(args[0])
+            return "OK"
+        else:
+            cherrypy.response.headers['Content-Type'] = 'text/plain'
+            return self.loadpaste(args[0]).encode("utf-8")
+
+    @cherrypy.expose
+    def search(self):
+        for entry in self.namecache:
+            yield entry + "\n"
 
     def loadpaste(self, name):
         path = self.pastepath(sha256(name))
@@ -69,6 +90,18 @@ class WasteWeb(object):
             f.write(name)
             f.write("\n")
             f.write(contents)
+        self.namecache.update({name})
+
+    def delpaste(self, name):
+        self.namecache.remove(name)
+        path = self.pastepath(sha256(name))
+        os.unlink(path)
+        pdir = os.path.dirname(path)
+        try:
+            os.rmdir(os.path.normpath(pdir))
+            os.rmdir(os.path.normpath(os.path.join(pdir, "../")))
+        except:
+            pass
 
     def pastepath(self, hashedname):
         return os.path.join(self.datadir, hashedname[0], hashedname[1], hashedname + ".txt")

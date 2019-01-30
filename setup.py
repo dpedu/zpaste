@@ -19,7 +19,8 @@ setup(name='wastebin',
       install_requires=__requirements__,
       entry_points={
           "console_scripts": [
-              "wastebind = wastebin.daemon:main"
+              "wastebind = wastebin.daemon:main",
+              "wpaste = wastebin.cli:main"
           ]
       },
       zip_safe=False)
