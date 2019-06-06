@@ -41,7 +41,9 @@ def main():
     # parser.add_argument("-p", "--password", help="password")
 
     spr_action = parser.add_subparsers(dest="action", help="action to take")
-    spr_action.add_parser("list", help="show list of pastes")
+
+    spr_list = spr_action.add_parser("list", help="show list of pastes")
+    spr_list.add_argument("name", nargs="?", help="prefix to match")
 
     spr_new = spr_action.add_parser("new", help="create a paste")
     spr_new.add_argument("name", nargs="?", default="", help="name of paste to create")
@@ -89,7 +91,13 @@ def main():
         r.delete(host + args.name).raise_for_status()
 
     elif args.action == "list":
-        print(r.get(host + "search").text, end="") 
+        print(r.get(host + "search",
+                    params={"prefix": args.name} if args.name else None).text,
+              end="")
+
+    else:
+        parser.error('must specify an action')
+
 
 if __name__ == "__main__":
     main()

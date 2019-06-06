@@ -1,15 +1,26 @@
 FROM ubuntu:bionic
 
-RUN apt-get update && \
-    apt-get install -y python3-pip
+RUN sed -i -E 's/(archive|security).ubuntu.com/192.168.1.142/' /etc/apt/sources.list && \
+    sed -i -E 's/^deb-src/# deb-src/' /etc/apt/sources.list && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            wget gpg git build-essential && \
+    wget -qO- http://artifact.scc.net.davepedu.com/repo/apt/extpython/dists/bionic/install | bash /dev/stdin && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            extpython-python3.7 && \
+    apt-get clean autoclean && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/{apt,dpkg,cache,log}/
 
-ADD . /tmp/code/
+ADD . /tmp/code
 
-RUN pip3 install -U pip && \
-    cd /tmp/code && \
-    python3 setup.py install && \
+RUN cd /tmp/code && \
+    /opt/extpython/3.7/bin/pip3 install -r requirements.txt && \
+    /opt/extpython/3.7/bin/python3 setup.py install && \
     useradd --uid 1000 app
 
-VOLUME /data/
 USER app
-ENTRYPOINT ["wastebind", "-d", "/data/"]
+ENTRYPOINT ["/opt/extpython/3.7/bin/wastebind"]
