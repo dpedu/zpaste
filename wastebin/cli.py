@@ -1,5 +1,6 @@
 from appdirs import user_config_dir
 import os
+import sys
 import json
 import argparse
 import requests
@@ -46,12 +47,14 @@ def main():
     spr_list.add_argument("name", nargs="?", help="prefix to match")
 
     spr_new = spr_action.add_parser("new", help="create a paste")
-    spr_new.add_argument("name", nargs="?", default="", help="name of paste to create")
+    spr_new.add_argument("-i", "--stdin", action="store_true", help="read contents from stdin")
+    spr_new.add_argument("name", help="name of paste to create")
 
     spr_get = spr_action.add_parser("get", help="get a paste")
     spr_get.add_argument("name", help="name of paste to get")
 
     spr_edit = spr_action.add_parser("edit", help="edit a paste")
+    spr_edit.add_argument("-i", "--stdin", action="store_true", help="read contents from stdin")
     spr_edit.add_argument("name", help="name of paste to edit")
 
     spr_del = spr_action.add_parser("del", help="delete a paste")
@@ -70,17 +73,18 @@ def main():
     def putpaste(name, body):
         return r.post(host + "make", data={"name": name, "contents": body})
 
-    if args.action in ("new", "edit", "get"):
-        if args.action in ("edit", "get"):
-            content = getpaste(args.name)
-        if args.action == "get":
-            print(content, end="")
-            return
-        with tempfile.NamedTemporaryFile() as f:
-            if args.action == "edit":
-                f.write(content.encode("utf-8"))
-                f.flush()
-            content = editor(f.name)
+    if args.action == "get":
+        print(getpaste(args.name), end="")
+
+    elif args.action in ("new", "edit"):
+        if args.stdin:
+            content = sys.stdin.read()
+        else:
+            with tempfile.NamedTemporaryFile() as f:
+                if args.action == "edit":
+                    f.write(getpaste(args.name).encode("utf-8"))
+                    f.flush()
+                content = editor(f.name)
         if not content:
             print("Blank paste, exiting")
         r = putpaste(args.name, content)
