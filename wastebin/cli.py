@@ -60,18 +60,28 @@ def main():
     spr_del = spr_action.add_parser("del", help="delete a paste")
     spr_del.add_argument("name", help="name of paste to delete")
 
+    # batch operations
+    spr_batch = spr_action.add_parser("batch", help="batch operations")
+    spr_batch_action = spr_batch.add_subparsers(dest="batchaction", help="action to take")
+
+    spr_import = spr_batch_action.add_parser("import", help="import many text files to pastes")
+    spr_import.add_argument("files", nargs="+", help="name of paste to get")
+
+    spr_export = spr_batch_action.add_parser("export", help="export pastes to many text files")
+    spr_export.add_argument("dir", help="directory to write files")
+
     args = parser.parse_args()
-    r = requests.session()
+    sess = requests.session()
 
     host = args.host.rstrip("/") + "/"
 
     def getpaste(name):
-        req = r.get(host + name)
+        req = sess.get(host + name)
         req.raise_for_status()
         return req.text
 
     def putpaste(name, body):
-        return r.post(host + "make", data={"name": name, "contents": body})
+        return sess.post(host + "make", data={"name": name, "contents": body})
 
     if args.action == "get":
         print(getpaste(args.name), end="")
@@ -92,13 +102,35 @@ def main():
         print(r.url)
 
     elif args.action == "del":
-        r.delete(host + args.name).raise_for_status()
+        sess.delete(host + args.name).raise_for_status()
 
     elif args.action == "list":
-        print(r.get(host + "search",
-                    params={"prefix": args.name} if args.name else None).text,
+        print(sess.get(host + "search",
+                       params={"prefix": args.name} if args.name else None).text,
               end="")
 
+    elif args.action == "batch":
+        if args.batchaction == "import":
+            for fpath in args.files:
+                pastename = os.path.basename(fpath)
+                if pastename.endswith(".txt"):
+                    pastename = pastename[0:-4]
+                with open(fpath) as f:
+                    content = f.read()
+                r = putpaste(pastename, content)
+                r.raise_for_status()
+                print(r.url)
+        elif args.batchaction == "export":
+            os.makedirs(args.dir, exist_ok=True)
+            for name in sess.get(host + "search").text.split("\n"):
+                if not name:
+                    continue
+                outfile = os.path.join(args.dir, f"{name}.txt")
+                with open(outfile, "w") as f:  # TODO validate name doesnt have slashes and whatnot
+                    f.write(getpaste(name))
+                print(outfile)
+        else:
+            parser.error('must specify an action')
     else:
         parser.error('must specify an action')
 
