@@ -17,7 +17,7 @@ portend==2.4
 pycparser==2.19
 PyMySQL==0.9.3
 pytz==2019.1
-RelStorage==2.1.1
+-e git+https://git.davepedu.com/dave/relstorage.git@5ae138b71a0eeb740208e61cfd1662c49738ee45#egg=RelStorage
 requests==2.22.0
 six==1.12.0
 tempora==1.14.1

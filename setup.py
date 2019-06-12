@@ -5,8 +5,8 @@ import os
 
 
 __version__ = "0.0.1"
-with open(os.path.join(os.path.dirname(__file__), "requirements.txt")) as f:
-    __requirements__ = [line.strip() for line in f.readlines()]
+# with open(os.path.join(os.path.dirname(__file__), "requirements.txt")) as f:
+#     __requirements__ = [line.strip() for line in f.readlines()]
 
 
 setup(name='wastebin',
@@ -16,7 +16,7 @@ setup(name='wastebin',
       author='dpedu',
       author_email='dave@davepedu.com',
       packages=['wastebin'],
-      install_requires=__requirements__,
+      # install_requires=__requirements__,
       entry_points={
           "console_scripts": [
               "wastebind = wastebin.daemon:main",
